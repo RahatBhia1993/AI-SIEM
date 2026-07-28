@@ -1,0 +1,14 @@
+[
+    {
+        "alert_id": "ALERT-001",
+        "condition": ">= 5",
+        "detected_at": "2026-07-28T07:20:19.101241",
+        "first_seen": "2026-07-28T07:20:19.101241",
+        "ip": "1.1.1.1",
+        "last_seen": "2026-07-28T07:20:19.101241",
+        "mitre_technique": "T1110",
+        "observed_value": 5,
+        "rule_name": "Brute Force Detection",
+        "severity": "HIGH"
+    }
+]

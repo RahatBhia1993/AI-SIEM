@@ -1,0 +1,8 @@
+{
+    "rule_name": "Brute Force Detection",
+    "metric": "failed_logins",
+    "operator": ">=",
+    "value": 5,
+    "severity": "HIGH",
+    "mitre_technique": "T1110"
+}

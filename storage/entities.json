@@ -1,0 +1,42 @@
+[
+    {
+        "alert_count": 2,
+        "alerts": [
+            {
+                "alert_id": "ALERT-001",
+                "condition": ">= 5",
+                "detected_at": "2026-07-28T07:20:19.101241",
+                "first_seen": "2026-07-28T07:20:19.101241",
+                "ip": "1.1.1.1",
+                "last_seen": "2026-07-28T07:20:19.101241",
+                "mitre_technique": "T1110",
+                "observed_value": 5,
+                "rule_name": "Brute Force Detection",
+                "severity": "HIGH"
+            },
+            {
+                "alert_id": null,
+                "condition": "Failed logins followed by success",
+                "detected_at": "2026-07-28T07:20:19.101254",
+                "first_seen": "2026-07-28T07:20:19.101257",
+                "ip": "1.1.1.1",
+                "last_seen": "2026-07-28T07:20:19.101259",
+                "mitre_technique": "T1110",
+                "observed_value": {
+                    "failed_logins": 5,
+                    "successful_logins": 1
+                },
+                "reason": "Multiple failed logins followed by successful login",
+                "rule_name": "Login Correlation Detection",
+                "severity": "HIGH"
+            }
+        ],
+        "first_seen": "2026-07-28T07:20:19.101241",
+        "incidents": [
+            "INC-001"
+        ],
+        "last_seen": "2026-07-28T07:20:19.101254",
+        "type": "ip",
+        "value": "1.1.1.1"
+    }
+]
