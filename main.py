@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from siem.normalization import normalize_log
 from siem.analysis import analyze_logs
 from siem.rule_engine import evaluate_rules
@@ -10,6 +12,8 @@ from siem.storage import (
     save_entities
 )
 from siem.utils import flatten_alerts
+from siem.brute_force_detector import BruteForceDetector
+
 from rules.rule_loader import load_rules
 
 
@@ -21,19 +25,31 @@ def run_pipeline(raw_logs):
 
     normalized_logs = []
 
+    detector = BruteForceDetector(
+        {
+            "window_size": 60,
+            "threshold": 5
+        }
+    )
+
+    sliding_window_alerts = []
+
     for log in raw_logs:
 
-        normalized_logs.append(
-            normalize_log(log)
-        )
+        event = normalize_log(log)
+
+        normalized_logs.append(event)
+
+        alert = detector.process_event(event)
+
+        if alert:
+            sliding_window_alerts.append(alert)
 
     # ==========================================
     # STEP 2 : ANALYSIS
     # ==========================================
 
-    metrics = analyze_logs(
-        normalized_logs
-    )
+    metrics = analyze_logs(normalized_logs)
 
     # ==========================================
     # STEP 3 : LOAD RULES
@@ -56,21 +72,14 @@ def run_pipeline(raw_logs):
     # STEP 5 : CORRELATION ENGINE
     # ==========================================
 
-    correlated_alerts = correlate(
-        metrics
-    )
+    correlated_alerts = correlate(metrics)
 
     # ==========================================
     # STEP 6 : INCIDENT + ENTITY MANAGEMENT
     # ==========================================
 
     incidents = {}
-
     entities = {}
-
-    # ------------------------------------------
-    # Process Rule Alerts
-    # ------------------------------------------
 
     for rule_name, alerts in rule_alerts.items():
 
@@ -89,10 +98,6 @@ def run_pipeline(raw_logs):
                 incident_id
             )
 
-    # ------------------------------------------
-    # Process Correlation Alerts
-    # ------------------------------------------
-
     for alert in correlated_alerts:
 
         process_alert(
@@ -108,13 +113,11 @@ def run_pipeline(raw_logs):
             incident_id
         )
 
-    # ==========================================
-    # RETURN SIEM RESULT
-    # ==========================================
-
     return {
 
         "normalized_logs": normalized_logs,
+
+        "sliding_window_alerts": sliding_window_alerts,
 
         "metrics": metrics,
 
@@ -135,28 +138,49 @@ def run_pipeline(raw_logs):
 
 if __name__ == "__main__":
 
+    base = datetime.now()
+
     raw_logs = [
 
-        {"ip": "1.1.1.1", "action": "failed login"},
-        {"ip": "1.1.1.1", "action": "failed login"},
-        {"ip": "1.1.1.1", "action": "failed login"},
-        {"ip": "1.1.1.1", "action": "failed login"},
-        {"ip": "1.1.1.1", "action": "failed login"},
-        {"ip": "1.1.1.1", "action": "success login"},
-
-        {"ip": "2.2.2.2", "action": "success login"}
+        {
+            "ip": "1.1.1.1",
+            "action": "failed login",
+            "timestamp": base
+        },
+        {
+            "ip": "1.1.1.1",
+            "action": "failed login",
+            "timestamp": base + timedelta(seconds=10)
+        },
+        {
+            "ip": "1.1.1.1",
+            "action": "failed login",
+            "timestamp": base + timedelta(seconds=20)
+        },
+        {
+            "ip": "1.1.1.1",
+            "action": "failed login",
+            "timestamp": base + timedelta(seconds=30)
+        },
+        {
+            "ip": "1.1.1.1",
+            "action": "failed login",
+            "timestamp": base + timedelta(seconds=40)
+        },
+        {
+            "ip": "1.1.1.1",
+            "action": "success login",
+            "timestamp": base + timedelta(seconds=50)
+        },
+        {
+            "ip": "2.2.2.2",
+            "action": "success login",
+            "timestamp": base + timedelta(seconds=70)
+        }
 
     ]
 
-    # ------------------------------------------
-    # Run Pipeline
-    # ------------------------------------------
-
     result = run_pipeline(raw_logs)
-
-    # ------------------------------------------
-    # Prepare Data for Storage
-    # ------------------------------------------
 
     alerts = flatten_alerts(
         result["rule_alerts"]
@@ -170,10 +194,6 @@ if __name__ == "__main__":
         result["entities"].values()
     )
 
-    # ------------------------------------------
-    # Save Results
-    # ------------------------------------------
-
     try:
 
         save_alerts(alerts)
@@ -186,9 +206,10 @@ if __name__ == "__main__":
 
         print(f"Storage error: {e}")
 
-    # ------------------------------------------
-    # Display Results
-    # ------------------------------------------
+    print("\n" + "=" * 60)
+    print("SLIDING WINDOW ALERTS")
+    print("=" * 60)
+    print(result["sliding_window_alerts"])
 
     print("\n" + "=" * 60)
     print("METRICS")

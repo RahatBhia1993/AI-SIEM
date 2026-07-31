@@ -31,11 +31,14 @@ def normalize_log(raw_log):
 
         timestamp = raw_log.get("timestamp")
 
-        if timestamp:
-            normalized_log["timestamp"] = datetime.fromisoformat(timestamp)
-        else:
-            normalized_log["timestamp"] = datetime.utcnow()
+        if isinstance(timestamp, datetime):
+             normalized_log["timestamp"] = timestamp
 
+        elif isinstance(timestamp, str):
+             normalized_log["timestamp"] = datetime.fromisoformat(timestamp)
+
+        else:
+             normalized_log["timestamp"] = datetime.utcnow()
         # -------------------------------
         # Event Type
         # -------------------------------
