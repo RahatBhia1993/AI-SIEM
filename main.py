@@ -13,6 +13,7 @@ from siem.storage import (
 )
 from siem.utils import flatten_alerts
 from siem.brute_force_detector import BruteForceDetector
+from siem.event_ordering import EventOrdering
 
 from rules.rule_loader import load_rules
 
@@ -25,6 +26,18 @@ def run_pipeline(raw_logs):
 
     normalized_logs = []
 
+    # ------------------------------------------
+    # Event Ordering
+    # ------------------------------------------
+
+    event_ordering = EventOrdering(
+        buffer_size=10
+    )
+
+    # ------------------------------------------
+    # Sliding Window Detector
+    # ------------------------------------------
+
     detector = BruteForceDetector(
         {
             "window_size": 60,
@@ -34,16 +47,41 @@ def run_pipeline(raw_logs):
 
     sliding_window_alerts = []
 
+    # ------------------------------------------
+    # Normalize + Event Ordering
+    # ------------------------------------------
+
     for log in raw_logs:
 
         event = normalize_log(log)
 
         normalized_logs.append(event)
 
-        alert = detector.process_event(event)
+        ordered_events = event_ordering.process_event(event)
 
-        if alert:
-            sliding_window_alerts.append(alert)
+        if ordered_events:
+
+            for ordered_event in ordered_events:
+
+                alert = detector.process_event(ordered_event)
+
+                if alert:
+                    sliding_window_alerts.append(alert)
+
+    # ==========================================
+    # Flush Remaining Ordered Events
+    # ==========================================
+
+    remaining_events = event_ordering.flush()
+
+    for entity, events in remaining_events.items():
+
+        for event in events:
+
+            alert = detector.process_event(event)
+
+            if alert:
+                sliding_window_alerts.append(alert)
 
     # ==========================================
     # STEP 2 : ANALYSIS
@@ -81,6 +119,10 @@ def run_pipeline(raw_logs):
     incidents = {}
     entities = {}
 
+    # ------------------------------------------
+    # Process Rule Alerts
+    # ------------------------------------------
+
     for rule_name, alerts in rule_alerts.items():
 
         for alert in alerts:
@@ -98,6 +140,10 @@ def run_pipeline(raw_logs):
                 incident_id
             )
 
+    # ------------------------------------------
+    # Process Correlation Alerts
+    # ------------------------------------------
+
     for alert in correlated_alerts:
 
         process_alert(
@@ -112,6 +158,10 @@ def run_pipeline(raw_logs):
             entities,
             incident_id
         )
+
+    # ==========================================
+    # RETURN RESULTS
+    # ==========================================
 
     return {
 
@@ -180,7 +230,15 @@ if __name__ == "__main__":
 
     ]
 
+    # ------------------------------------------
+    # Run Pipeline
+    # ------------------------------------------
+
     result = run_pipeline(raw_logs)
+
+    # ------------------------------------------
+    # Prepare Data for Storage
+    # ------------------------------------------
 
     alerts = flatten_alerts(
         result["rule_alerts"]
@@ -194,6 +252,10 @@ if __name__ == "__main__":
         result["entities"].values()
     )
 
+    # ------------------------------------------
+    # Save Results
+    # ------------------------------------------
+
     try:
 
         save_alerts(alerts)
@@ -205,6 +267,10 @@ if __name__ == "__main__":
     except Exception as e:
 
         print(f"Storage error: {e}")
+
+    # ------------------------------------------
+    # Display Results
+    # ------------------------------------------
 
     print("\n" + "=" * 60)
     print("SLIDING WINDOW ALERTS")

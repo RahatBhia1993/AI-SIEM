@@ -1,47 +1,56 @@
 from datetime import datetime
 
+
 def normalize_log(raw_log):
 
     normalized_log = {
 
         "event_type": "unknown",
+
         "ip": "unknown",
+
         "status": "unknown",
+
         "timestamp": None,
+
         "normalized": False,
+
         "raw_log": raw_log
 
     }
 
-    # ---------------------------------------
+    # ----------------------------------------
     # Dictionary Logs
-    # ---------------------------------------
+    # ----------------------------------------
 
     if isinstance(raw_log, dict):
 
         normalized_log["ip"] = (
-            raw_log.get("ip")
-            or raw_log.get("source_ip")
-            or raw_log.get("src_ip")
-        )
 
-        # -------------------------------
-        # Timestamp Handling
-        # -------------------------------
+            raw_log.get("ip")
+
+            or raw_log.get("source_ip")
+
+            or raw_log.get("src_ip")
+
+        )
 
         timestamp = raw_log.get("timestamp")
 
+        # Already a datetime object
         if isinstance(timestamp, datetime):
-             normalized_log["timestamp"] = timestamp
 
+            normalized_log["timestamp"] = timestamp
+
+        # ISO formatted string
         elif isinstance(timestamp, str):
-             normalized_log["timestamp"] = datetime.fromisoformat(timestamp)
 
+            normalized_log["timestamp"] = datetime.fromisoformat(timestamp)
+
+        # No timestamp supplied
         else:
-             normalized_log["timestamp"] = datetime.utcnow()
-        # -------------------------------
-        # Event Type
-        # -------------------------------
+
+            normalized_log["timestamp"] = datetime.utcnow()
 
         action = raw_log.get("action") or raw_log.get("event")
 
@@ -54,16 +63,18 @@ def normalize_log(raw_log):
             if "success" in action:
 
                 normalized_log["status"] = "success"
+
                 normalized_log["normalized"] = True
 
             elif "fail" in action:
 
                 normalized_log["status"] = "failed"
+
                 normalized_log["normalized"] = True
 
-    # ---------------------------------------
+    # ----------------------------------------
     # String Logs
-    # ---------------------------------------
+    # ----------------------------------------
 
     elif isinstance(raw_log, str):
 
@@ -76,11 +87,13 @@ def normalize_log(raw_log):
         if "success" in log_lower:
 
             normalized_log["status"] = "success"
+
             normalized_log["normalized"] = True
 
         elif "fail" in log_lower:
 
             normalized_log["status"] = "failed"
+
             normalized_log["normalized"] = True
 
         parts = raw_log.split()
