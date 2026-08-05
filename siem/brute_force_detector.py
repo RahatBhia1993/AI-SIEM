@@ -1,3 +1,4 @@
+from siem.detection_factory import DetectionFactory
 from datetime import timedelta
 
 
@@ -36,21 +37,37 @@ class BruteForceDetector:
 
             if ip not in self.active_alerts:
 
-                alert = {
+                alert = DetectionFactory.create_detection(
 
-                    "type": "brute_force",
+                     detection_type="brute_force",
 
-                    "status": "active",
+                     severity="HIGH",
 
-                    "ip": ip,
+                     confidence=1.0,
 
-                    "timestamp": event["timestamp"],
+                     entity_type="ip",
 
-                    "event_count": len(window),
+                     entity_value=ip,
 
-                    "window_seconds": self.config["window_size"]
+                     source_detector="SlidingWindowDetector",
 
-                }
+                     mitre_technique="T1110",
+
+                     timestamp=event["timestamp"],
+
+                     evidence={
+
+                         "failed_attempts": len(window),
+
+                         "window_seconds": self.config["window_size"],
+
+                         "first_seen": window[0]["timestamp"],
+
+                         "last_seen": event["timestamp"]
+
+                     }
+
+                 )
 
                 self.active_alerts[ip] = alert
 

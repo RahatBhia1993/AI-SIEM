@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from siem.normalization import normalize_log
 from siem.analysis import analyze_logs
@@ -12,10 +12,11 @@ from siem.storage import (
     save_entities
 )
 from siem.utils import flatten_alerts
-from siem.brute_force_detector import BruteForceDetector
-from siem.event_ordering import EventOrdering
+from siem.detection_pipeline import DetectionPipeline
 
 from rules.rule_loader import load_rules
+
+from simulations.brute_force_simulation import BruteForceSimulation
 
 
 def run_pipeline(raw_logs):
@@ -26,71 +27,46 @@ def run_pipeline(raw_logs):
 
     normalized_logs = []
 
-    # ------------------------------------------
-    # Event Ordering
-    # ------------------------------------------
-
-    event_ordering = EventOrdering(
-        buffer_size=10
-    )
-
-    # ------------------------------------------
-    # Sliding Window Detector
-    # ------------------------------------------
-
-    detector = BruteForceDetector(
-        {
-            "window_size": 60,
-            "threshold": 5
-        }
-    )
-
-    sliding_window_alerts = []
-
-    # ------------------------------------------
-    # Normalize + Event Ordering
-    # ------------------------------------------
-
     for log in raw_logs:
 
         event = normalize_log(log)
 
         normalized_logs.append(event)
 
-        ordered_events = event_ordering.process_event(event)
-
-        if ordered_events:
-
-            for ordered_event in ordered_events:
-
-                alert = detector.process_event(ordered_event)
-
-                if alert:
-                    sliding_window_alerts.append(alert)
-
     # ==========================================
-    # Flush Remaining Ordered Events
+    # STEP 2 : DETECTION PIPELINE
     # ==========================================
 
-    remaining_events = event_ordering.flush()
+    detection_pipeline = DetectionPipeline()
 
-    for entity, events in remaining_events.items():
+    detections = detection_pipeline.process(
+        normalized_logs
+    )
 
-        for event in events:
+    # Separate detections by detector type
 
-            alert = detector.process_event(event)
+    sliding_window_alerts = [
+        detection
+        for detection in detections
+        if detection["detection_type"] == "brute_force"
+    ]
 
-            if alert:
-                sliding_window_alerts.append(alert)
+    burst_detections = [
+        detection
+        for detection in detections
+        if detection["detection_type"] == "burst"
+    ]
 
     # ==========================================
-    # STEP 2 : ANALYSIS
+    # STEP 3 : ANALYSIS
     # ==========================================
 
-    metrics = analyze_logs(normalized_logs)
+    metrics = analyze_logs(
+        normalized_logs
+    )
 
     # ==========================================
-    # STEP 3 : LOAD RULES
+    # STEP 4 : LOAD RULES
     # ==========================================
 
     rules = load_rules(
@@ -98,7 +74,7 @@ def run_pipeline(raw_logs):
     )
 
     # ==========================================
-    # STEP 4 : RULE ENGINE
+    # STEP 5 : RULE ENGINE
     # ==========================================
 
     rule_alerts = evaluate_rules(
@@ -107,23 +83,23 @@ def run_pipeline(raw_logs):
     )
 
     # ==========================================
-    # STEP 5 : CORRELATION ENGINE
+    # STEP 6 : CORRELATION
     # ==========================================
 
-    correlated_alerts = correlate(metrics)
+    correlated_alerts = correlate(
+        metrics
+    )
 
     # ==========================================
-    # STEP 6 : INCIDENT + ENTITY MANAGEMENT
+    # STEP 7 : INCIDENT MANAGEMENT
     # ==========================================
 
     incidents = {}
     entities = {}
 
-    # ------------------------------------------
     # Process Rule Alerts
-    # ------------------------------------------
 
-    for rule_name, alerts in rule_alerts.items():
+    for _, alerts in rule_alerts.items():
 
         for alert in alerts:
 
@@ -132,7 +108,9 @@ def run_pipeline(raw_logs):
                 incidents
             )
 
-            incident_id = incidents[alert["ip"]]["incident_id"]
+            incident_id = incidents[
+                alert["ip"]
+            ]["incident_id"]
 
             process_entity(
                 alert,
@@ -140,9 +118,7 @@ def run_pipeline(raw_logs):
                 incident_id
             )
 
-    # ------------------------------------------
     # Process Correlation Alerts
-    # ------------------------------------------
 
     for alert in correlated_alerts:
 
@@ -151,7 +127,9 @@ def run_pipeline(raw_logs):
             incidents
         )
 
-        incident_id = incidents[alert["ip"]]["incident_id"]
+        incident_id = incidents[
+            alert["ip"]
+        ]["incident_id"]
 
         process_entity(
             alert,
@@ -167,7 +145,11 @@ def run_pipeline(raw_logs):
 
         "normalized_logs": normalized_logs,
 
+        "detections": detections,
+
         "sliding_window_alerts": sliding_window_alerts,
+
+        "burst_detections": burst_detections,
 
         "metrics": metrics,
 
@@ -188,57 +170,36 @@ def run_pipeline(raw_logs):
 
 if __name__ == "__main__":
 
-    base = datetime.now()
+    # ==========================================
+    # CREATE SIMULATION
+    # ==========================================
 
-    raw_logs = [
+    simulation = BruteForceSimulation(
+        attacker_ip="1.1.1.1",
+        failed_attempts=5
+    )
 
-        {
-            "ip": "1.1.1.1",
-            "action": "failed login",
-            "timestamp": base
-        },
-        {
-            "ip": "1.1.1.1",
-            "action": "failed login",
-            "timestamp": base + timedelta(seconds=10)
-        },
-        {
-            "ip": "1.1.1.1",
-            "action": "failed login",
-            "timestamp": base + timedelta(seconds=20)
-        },
-        {
-            "ip": "1.1.1.1",
-            "action": "failed login",
-            "timestamp": base + timedelta(seconds=30)
-        },
-        {
-            "ip": "1.1.1.1",
-            "action": "failed login",
-            "timestamp": base + timedelta(seconds=40)
-        },
-        {
-            "ip": "1.1.1.1",
-            "action": "success login",
-            "timestamp": base + timedelta(seconds=50)
-        },
+    raw_logs = simulation.generate_events()
+
+    # Normal user
+
+    raw_logs.append(
         {
             "ip": "2.2.2.2",
             "action": "success login",
-            "timestamp": base + timedelta(seconds=70)
+            "timestamp": datetime.now()
         }
+    )
 
-    ]
-
-    # ------------------------------------------
-    # Run Pipeline
-    # ------------------------------------------
+    # ==========================================
+    # RUN PIPELINE
+    # ==========================================
 
     result = run_pipeline(raw_logs)
 
-    # ------------------------------------------
-    # Prepare Data for Storage
-    # ------------------------------------------
+    # ==========================================
+    # PREPARE STORAGE DATA
+    # ==========================================
 
     alerts = flatten_alerts(
         result["rule_alerts"]
@@ -252,9 +213,9 @@ if __name__ == "__main__":
         result["entities"].values()
     )
 
-    # ------------------------------------------
-    # Save Results
-    # ------------------------------------------
+    # ==========================================
+    # SAVE RESULTS
+    # ==========================================
 
     try:
 
@@ -268,14 +229,24 @@ if __name__ == "__main__":
 
         print(f"Storage error: {e}")
 
-    # ------------------------------------------
-    # Display Results
-    # ------------------------------------------
+    # ==========================================
+    # DISPLAY RESULTS
+    # ==========================================
+
+    print("\n" + "=" * 60)
+    print("ALL DETECTIONS")
+    print("=" * 60)
+    print(result["detections"])
 
     print("\n" + "=" * 60)
     print("SLIDING WINDOW ALERTS")
     print("=" * 60)
     print(result["sliding_window_alerts"])
+
+    print("\n" + "=" * 60)
+    print("BURST DETECTIONS")
+    print("=" * 60)
+    print(result["burst_detections"])
 
     print("\n" + "=" * 60)
     print("METRICS")
