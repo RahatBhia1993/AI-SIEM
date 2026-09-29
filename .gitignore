@@ -5,3 +5,5 @@ storage/*.json
 
 .env
 .DS_Store
+
+ai_siem_practice/
