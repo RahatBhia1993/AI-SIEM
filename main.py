@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from siem.normalization import normalize_log
 from siem.analysis import analyze_logs
@@ -274,7 +274,7 @@ if __name__ == "__main__":
         {
             "ip": "2.2.2.2",
             "action": "success login",
-            "timestamp": datetime.now()
+            "timestamp": datetime.now(timezone.utc)
         }
     )
 

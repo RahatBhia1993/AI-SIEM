@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class BruteForceSimulation:
@@ -12,7 +12,7 @@ class BruteForceSimulation:
 
         events = []
 
-        base = datetime.now()
+        base = datetime.now(timezone.utc)
 
         # Generate failed logins
         for i in range(self.failed_attempts):
