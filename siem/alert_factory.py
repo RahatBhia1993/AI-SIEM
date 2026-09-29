@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 
@@ -13,7 +13,7 @@ class AlertFactory:
         timestamp = detection.get("timestamp")
 
         if timestamp is None:
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
 
         entity = detection.get("entity", {})
 
@@ -92,7 +92,7 @@ class AlertFactory:
         )
 
         if timestamp is None:
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
 
         entity = {
             "type": "ip",
@@ -179,7 +179,7 @@ class AlertFactory:
         )
 
         if timestamp is None:
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
 
         entity = {
             "type": "ip",

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 alert_counter = 0
 
@@ -55,7 +55,7 @@ def evaluate_rules(metrics, rules):
             if result:
 
                 alert_counter += 1
-                timestamp = datetime.utcnow().isoformat()
+                timestamp = datetime.now(timezone.utc).isoformat()
 
                 alert = {
 

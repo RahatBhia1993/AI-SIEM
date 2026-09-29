@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def normalize_log(raw_log):
@@ -62,7 +62,7 @@ def normalize_log(raw_log):
         # No timestamp supplied
         else:
 
-            normalized_log["timestamp"] = datetime.utcnow()
+            normalized_log["timestamp"] = datetime.now(timezone.utc)
 
         action = raw_log.get("action") or raw_log.get("event")
 

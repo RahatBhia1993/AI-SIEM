@@ -1,11 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from siem.alert_factory import AlertFactory
 
 
 def test_detection_to_unified_alert():
 
-    timestamp = datetime.utcnow()
+    timestamp = datetime.now(timezone.utc)
 
     detection = {
         "detection_id": "DET-001",
@@ -53,8 +53,8 @@ def test_detection_to_unified_alert():
 
 def test_correlation_to_unified_alert():
 
-    first_seen = datetime.utcnow()
-    success_time = datetime.utcnow()
+    first_seen = datetime.now(timezone.utc)
+    success_time = datetime.now(timezone.utc)
 
     correlation = {
         "correlation_type": "brute_force_success",
@@ -109,7 +109,7 @@ def test_correlation_to_unified_alert():
 
 def test_rule_to_unified_alert():
 
-    detected_at = datetime.utcnow()
+    detected_at = datetime.now(timezone.utc)
     first_seen = detected_at
     last_seen = detected_at
 
@@ -190,7 +190,7 @@ def test_all_alerts_have_unified_schema():
         "detection_type": "brute_force",
         "severity": "HIGH",
         "confidence": 0.9,
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(timezone.utc),
         "entity": {
             "type": "ip",
             "value": "10.0.0.1"
@@ -206,10 +206,10 @@ def test_all_alerts_have_unified_schema():
         "correlation_type": "brute_force_success",
         "ip": "10.0.0.2",
         "failed_attempts": 5,
-        "first_seen": datetime.utcnow(),
+        "first_seen": datetime.now(timezone.utc),
         "users": ["alice"],
         "host_names": ["server01"],
-        "success_time": datetime.utcnow(),
+        "success_time": datetime.now(timezone.utc),
         "severity": "HIGH",
         "reason": (
             "Failed logins followed by "
@@ -224,9 +224,9 @@ def test_all_alerts_have_unified_schema():
         "condition": ">= 5",
         "severity": "HIGH",
         "mitre_technique": "T1110",
-        "detected_at": datetime.utcnow(),
-        "first_seen": datetime.utcnow(),
-        "last_seen": datetime.utcnow()
+        "detected_at": datetime.now(timezone.utc),
+        "first_seen": datetime.now(timezone.utc),
+        "last_seen": datetime.now(timezone.utc)
     }
 
     alerts = [
