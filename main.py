@@ -3,7 +3,8 @@ from datetime import datetime, timezone
 from siem.normalization import normalize_log
 from siem.analysis import analyze_logs
 from siem.rule_engine import evaluate_rules
-from siem.incident_manager import process_alert
+from siem.incident_manager import process_alert, find_open_incident, find_open_incident
+
 from siem.entity_tracker import process_entity
 from siem.storage import (
     save_alerts,
@@ -212,9 +213,11 @@ def run_pipeline(raw_logs):
             incidents
         )
 
-        incident_id = incidents[
+        incident = find_open_incident(
+            incidents,
             alert["ip"]
-        ]["incident_id"]
+        )
+        incident_id = incident["incident_id"]
 
         process_entity(
             alert,
