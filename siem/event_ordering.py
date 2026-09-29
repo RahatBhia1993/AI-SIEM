@@ -50,7 +50,7 @@ class EventOrdering:
 
             ordered_events = self.buffers[entity].copy()
 
-            self.buffers[entity] = []
+            del self.buffers[entity]
 
             return ordered_events
 
