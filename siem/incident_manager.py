@@ -5,52 +5,93 @@ severity_rank = {
     "CRITICAL": 4
 }
 
-incident_counter = 0
 
+def create_incident(alert, incidents):
 
-def create_incident(alert):
+    incident_number = len(incidents) + 1
 
-    global incident_counter
+    entity = alert.get("entity", {})
 
-    incident_counter += 1
+    if isinstance(entity, dict):
+        primary_entity = entity.get("value")
+    else:
+        primary_entity = None
+
+    if primary_entity is None:
+        primary_entity = alert.get("ip")
 
     return {
-
-        "incident_id": f"INC-{incident_counter:03d}",
-
+        "incident_id": f"INC-{incident_number:03d}",
         "status": "OPEN",
-
         "severity": alert["severity"],
-
-        "primary_entity": alert["ip"],
-
+        "primary_entity": primary_entity,
         "created_at": alert["detected_at"],
-
         "updated_at": alert["detected_at"],
-
         "alerts": [alert]
-
     }
+
+
+
+def find_open_incident(incidents, ip):
+
+    for incident_id, incident in incidents.items():
+
+        if (
+            incident["status"] == "OPEN"
+            and incident["primary_entity"] == ip
+        ):
+            return incident
+
+    return None
 
 
 def process_alert(alert, incidents):
 
-    ip = alert["ip"]
+    ip = alert.get("entity", {}).get("value")
+    if ip is None:
+        ip= alert.get("ip")
 
-    if ip not in incidents:
+    found = find_open_incident(
+        incidents,
+        ip
+    )
 
-        incidents[ip] = create_incident(alert)
+    # Existing open incident
+    if found:
 
+        found["alerts"].append(alert)
+
+        found["updated_at"] = alert["detected_at"]
+
+        # Escalate severity, but never downgrade it
+        if (
+            severity_rank[alert["severity"]]
+            > severity_rank[found["severity"]]
+        ):
+            found["severity"] = alert["severity"]
+
+    # No open incident exists
     else:
 
-        incident = incidents[ip]
+        incident = create_incident(
+            alert,
+            incidents
+        )
 
-        incident["alerts"].append(alert)
+        incidents[incident["incident_id"]] = incident
 
-        incident["updated_at"] = alert["detected_at"]
+    return incidents
 
-        if severity_rank[alert["severity"]] > severity_rank[incident["severity"]]:
 
-            incident["severity"] = alert["severity"]
+def close_incident(incidents, ip):
+
+    incident = find_open_incident(
+        incidents,
+        ip
+    )
+
+    if incident:
+
+        incident["status"] = "CLOSED"
 
     return incidents

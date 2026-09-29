@@ -30,6 +30,10 @@ def test_brute_force_detector():
     assert detection is not None
     assert detection["detection_type"] == "brute_force"
     assert detection["severity"] == "HIGH"
+    assert detection["evidence"]["failed_attempts"] == 5
+    assert detection["evidence"]["detection_threshold"] == 5
+    assert detection["evidence"]["window_seconds"] == 60
+
 
     print("\n✅ BruteForceDetector Test Passed")
 

@@ -11,12 +11,15 @@ def normalize_log(raw_log):
 
         "status": "unknown",
 
+        "user": "unknown",
+
+        "host_name": "unknown",
+
         "timestamp": None,
 
         "normalized": False,
 
         "raw_log": raw_log
-
     }
 
     # ----------------------------------------
@@ -26,13 +29,22 @@ def normalize_log(raw_log):
     if isinstance(raw_log, dict):
 
         normalized_log["ip"] = (
-
             raw_log.get("ip")
-
             or raw_log.get("source_ip")
-
             or raw_log.get("src_ip")
+        )
 
+        normalized_log["user"] = (
+            raw_log.get("username")
+            or raw_log.get("user")
+            or "unknown"
+        )
+
+        normalized_log["host_name"] = (
+            raw_log.get("host")
+            or raw_log.get("computer")
+            or raw_log.get("system")
+            or "unknown"
         )
 
         timestamp = raw_log.get("timestamp")
@@ -80,8 +92,6 @@ def normalize_log(raw_log):
 
         log_lower = raw_log.lower()
 
-        normalized_log["timestamp"] = datetime.utcnow()
-
         normalized_log["event_type"] = "login_attempt"
 
         if "success" in log_lower:
@@ -98,8 +108,40 @@ def normalize_log(raw_log):
 
         parts = raw_log.split()
 
+        # Extract timestamp
+        if len(parts) >= 2:
+
+            timestamp_string = parts[0] + " " + parts[1]
+
+            timestamp = datetime.fromisoformat(timestamp_string)
+
+            normalized_log["timestamp"] = timestamp
+
+        # Extract IP
         if "from" in parts:
 
-            normalized_log["ip"] = parts[-1]
+            ip_index = parts.index("from") + 1
+
+            if ip_index < len(parts):
+
+                normalized_log["ip"] = parts[ip_index]
+
+        # Extract user
+        for part in parts:
+
+            if "user=" in part:
+
+                name = part.split("=")
+
+                normalized_log["user"] = name[-1]
+
+        # Extract hostname
+        for part in parts:
+
+            if "host=" in part:
+
+                host_name = part.split("=")
+
+                normalized_log["host_name"] = host_name[-1]
 
     return normalized_log

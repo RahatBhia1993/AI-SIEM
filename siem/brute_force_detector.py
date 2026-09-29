@@ -59,6 +59,8 @@ class BruteForceDetector:
 
                          "failed_attempts": len(window),
 
+                         "detection_threshold": self.config["threshold"],
+
                          "window_seconds": self.config["window_size"],
 
                          "first_seen": window[0]["timestamp"],

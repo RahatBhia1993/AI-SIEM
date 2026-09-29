@@ -14,6 +14,8 @@ def test_detection_pipeline():
         events.append(
             {
                 "ip": "1.1.1.1",
+                "user": "alice",
+                "host_name": "server-01",
                 "status": "failed",
                 "timestamp": datetime.now()
             }
