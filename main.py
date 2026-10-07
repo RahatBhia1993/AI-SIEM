@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from siem.normalization import normalize_log
 from siem.analysis import analyze_logs
 from siem.rule_engine import evaluate_rules
-from siem.incident_manager import process_alert, find_open_incident, find_open_incident
+from siem.incident_manager import process_alert, find_open_incident
 
 from siem.entity_tracker import process_entity
 from siem.storage import (
